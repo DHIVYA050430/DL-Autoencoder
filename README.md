@@ -4,29 +4,31 @@
 To develop a convolutional autoencoder for image denoising application.
 
 ## THEORY
-A Convolutional Autoencoder (CAE) for image denoising is a deep learning model designed to remove noise from corrupted images and restore them to their original quality. It consists of two main parts — an encoder, which compresses the input image into a lower-dimensional latent representation, and a decoder, which reconstructs the clean image from this representation. Convolutional layers are used to capture spatial and structural features, making the model efficient for image-related tasks. During training, the CAE learns to minimize the difference between noisy and clean images using a loss function such as Mean Squared Error (MSE). Once trained, it can effectively filter out unwanted noise while preserving key image details and textures. This makes it highly useful in applications like medical imaging, photography, and computer vision preprocessing.
+This code implements a **Denoising Autoencoder** using PyTorch to clean noisy images from the MNIST dataset. It uses a convolutional neural network architecture, where the encoder compresses the input image into a lower-dimensional representation, and the decoder reconstructs the original image from this compressed form. To train the model to remove noise, Gaussian noise is added to the clean images, and the network learns to recover the original from the noisy version. The training process uses **Mean Squared Error (MSE)** as the loss function to measure the reconstruction error and the **Adam optimizer** to update the model weights. The autoencoder is trained over multiple epochs using mini-batches of data for efficiency. After training, the model's performance is visually evaluated by displaying the original, noisy, and denoised images side by side.
+
+
 
 ## Neural Network Model
 Include the neural network model diagram.
 
 ## DESIGN STEPS
 ### STEP 1: 
-Load PyTorch, torchvision, matplotlib, and other required modules.
+Problem Understanding and Dataset Selection
 
 ### STEP 2: 
-Use MNIST dataset and apply transformations (tensor conversion, normalization).
-
+ Preprocessing the Dataset
+ 
 ### STEP 3: 
-Introduce random noise to input images to train the model for denoising.
+Design the Convolutional Autoencoder Architecture
 
 ### STEP 4: 
-Define the Denoising Autoencoder with encoder–decoder convolutional layers.
+Compile and Train the Model
 
 ### STEP 5: 
-Use MSE loss and Adam optimizer to minimize reconstruction error for several epochs.
+Evaluate the Model
 
 ### STEP 6: 
-Display original, noisy, and denoised images to evaluate performance visually.
+Visualization and Analysis
 
 ## PROGRAM
 
@@ -35,8 +37,6 @@ Display original, noisy, and denoised images to evaluate performance visually.
 ### Register Number: 212223230050
 
 ```python
-# Autoencoder for Image Denoising using PyTorch
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -61,33 +61,34 @@ test_dataset = datasets.MNIST(root='./data', train=False, download=True, transfo
 train_loader = DataLoader(dataset, batch_size=128, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
 
+# Add noise to images
 def add_noise(inputs, noise_factor=0.5):
     noisy = inputs + noise_factor * torch.randn_like(inputs)
     return torch.clamp(noisy, 0., 1.)
 
-# Define Autoencoder
+# Denoising Autoencoder model
 class DenoisingAutoencoder(nn.Module):
     def __init__(self):
         super(DenoisingAutoencoder, self).__init__()
+
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),  # [B, 16, 14, 14]
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1), # [B, 32, 7, 7]
             nn.ReLU()
         )
 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, output_padding=1, padding=1),
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1),  # [B, 16, 14, 14]
             nn.ReLU(),
-            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=2, output_padding=1, padding=1),
+            nn.ConvTranspose2d(16, 1, kernel_size=3, stride=2, padding=1, output_padding=1),   # [B, 1, 28, 28]
             nn.Sigmoid()
         )
 
-
     def forward(self, x):
-     x=self.encoder(x)
-     x=self.decoder(x)
-     return x
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
 # Initialize model, loss function and optimizer
 model = DenoisingAutoencoder().to(device)
@@ -95,35 +96,37 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Print model summary
-print("Name: Devadhaarini.D")
-print("Register Number: 212223230040")
 summary(model, input_size=(1, 28, 28))
 
 # Train the autoencoder
 def train(model, loader, criterion, optimizer, epochs=5):
-  model.train()
-  print("Name: Devadhaarini.D")
-  print("Register Number: 212223230040")
-  for epoch in range(epochs):
-    running_loss = 0.0
-    for images, _ in loader:
-        images = images.to(device)
-        noisy_images = add_noise(images).to(device)
+    model.train()
 
-        outputs = model(noisy_images)
-        loss = criterion(outputs, images)
+    for epoch in range(epochs):
+        running_loss = 0.0
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        for images, _ in loader:
+            images = images.to(device)
+            noisy_images = add_noise(images).to(device)
 
-        running_loss += loss.item()
+            # Forward pass
+            outputs = model(noisy_images)
+            loss = criterion(outputs, images)
 
-    print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(loader)}")
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(loader):.4f}")
+
 
 # Evaluate and visualize
 def visualize_denoising(model, loader, num_images=10):
     model.eval()
+
     with torch.no_grad():
         for images, _ in loader:
             images = images.to(device)
@@ -135,9 +138,8 @@ def visualize_denoising(model, loader, num_images=10):
     noisy_images = noisy_images.cpu().numpy()
     outputs = outputs.cpu().numpy()
 
-    print("Name: Devadhaarini.D")
-    print("Register Number: 212223230040")
     plt.figure(figsize=(18, 6))
+
     for i in range(num_images):
         # Original
         ax = plt.subplot(3, num_images, i + 1)
@@ -160,6 +162,7 @@ def visualize_denoising(model, loader, num_images=10):
     plt.tight_layout()
     plt.show()
 
+
 # Run training and visualization
 train(model, train_loader, criterion, optimizer, epochs=5)
 visualize_denoising(model, test_loader)
@@ -168,14 +171,15 @@ visualize_denoising(model, test_loader)
 ### OUTPUT
 
 ### Model Summary
-<img width="655" height="501" alt="image" src="https://github.com/user-attachments/assets/9ac19805-f84d-4ebe-8ae1-a9eb8043e1a7" />
+![image](https://github.com/user-attachments/assets/da282373-c253-46d3-a11a-e7f26998e311)
+
 
 ### Training loss
-<img width="383" height="159" alt="image" src="https://github.com/user-attachments/assets/b08e183a-61a2-44d7-bf94-6b22e05433a9" />
+![image](https://github.com/user-attachments/assets/c5e909b8-60bf-4dc0-ae19-5132a956f125)
 
 ## Original vs Noisy Vs Reconstructed Image
-<img width="1670" height="599" alt="image" src="https://github.com/user-attachments/assets/c21f032c-8a1d-4ed1-9024-3994ee5ca0ec" />
+![image](https://github.com/user-attachments/assets/05a1d967-7185-426b-b045-43a57e2d970d)
+
 
 ## RESULT
-Thus the program for Image Denoising using Convolutional Autoencoder is implemented successfully.
-
+Therefore, To develop a convolutional autoencoder for image denoising application executed successfully.
